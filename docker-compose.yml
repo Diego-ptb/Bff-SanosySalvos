@@ -1,0 +1,137 @@
+version: '3.9'
+
+services:
+  bff:
+    image: sanosysalvos/bff:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - LOG_LEVEL=debug
+      - AUTH_SERVICE_URL=http://auth-service:8080
+      - VET_SERVICE_URL=http://vet-service:8081
+      - PET_SERVICE_URL=http://pet-service:8082
+      - HTTP_TIMEOUT_MS=5000
+      - HTTP_MAX_RETRIES=3
+      - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=http://localhost:3001,http://localhost:3002
+      - THROTTLE_TTL=60000
+      - THROTTLE_LIMIT=100
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      vet-service:
+        condition: service_healthy
+      pet-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sanos-network
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3000/health/live', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Servicios existentes (referencias)
+  auth-service:
+    image: auth-service:latest
+    environment:
+      - SERVER_PORT=8080
+    networks:
+      - sanos-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  vet-service:
+    image: vet-service:latest
+    environment:
+      - SERVER_PORT=8081
+    networks:
+      - sanos-network
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  pet-service:
+    image: pet-service:latest
+    environment:
+      - SERVER_PORT=8082
+    networks:
+      - sanos-network
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Infraestructura compartida
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=sanosysalvos
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sanos-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - sanos-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - sanos-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  sanos-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
