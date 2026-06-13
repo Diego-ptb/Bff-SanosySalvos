@@ -91,6 +91,9 @@ export class VetDto {
     @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'Vet clinic UUID' })
     id!: string;
 
+    @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440001', description: 'Owner user UUID', required: false })
+    userId?: string;
+
     @ApiProperty({ example: 'Veterinaria Central', description: 'Clinic name' })
     name!: string;
 

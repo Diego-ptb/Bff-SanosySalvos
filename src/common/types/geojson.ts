@@ -27,6 +27,7 @@ export interface GeoJsonFeatureCollection<P = Record<string, any>> {
  * Property types for dashboard features
  */
 export interface VetProperties {
+    featureType: 'vet';
     id: string;
     name: string;
     address?: string;
@@ -36,12 +37,16 @@ export interface VetProperties {
 }
 
 export interface PetProperties {
+    featureType: 'pet';
     id: string;
     name: string;
     type: 'DOG' | 'CAT' | 'OTHER';
     imageUrl?: string;
     ownerId: string;
     description?: string;
+    contactInfo?: string;
+    breed?: string;
+    createdAt?: string;
 }
 
 // Type helpers

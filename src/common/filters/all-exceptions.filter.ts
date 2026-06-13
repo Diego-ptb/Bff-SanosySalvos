@@ -5,10 +5,9 @@ import {
     HttpException,
     HttpStatus,
     Logger,
-    BadRequestException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { AxiosError } from 'axios';
+import { isAxiosError } from 'axios';
 import { ProblemDetails } from '../types';
 
 @Catch()
@@ -52,6 +51,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
                     const body = responseBody as Record<string, unknown>;
                     if (Array.isArray(body.message)) {
                         errors = { validation: body.message as string[] };
+                    } else if (typeof body.errors === 'object' && body.errors !== null) {
+                        errors = body.errors as Record<string, string[]>;
                     }
                 }
             } else if (status === HttpStatus.UNAUTHORIZED) {
@@ -64,7 +65,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 title = 'Not Found';
                 type = 'https://sanosysalvos.dev/errors/not-found';
             }
-        } else if (exception instanceof AxiosError) {
+        } else if (isAxiosError(exception)) {
             if (exception.code === 'ECONNABORTED') {
                 status = HttpStatus.GATEWAY_TIMEOUT;
                 title = 'Upstream Service Timeout';
@@ -109,7 +110,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         };
 
         this.logger.error(
-            `[${correlationId}] ${request.method} ${request.path} - ${status} - ${detail}`,
+            `[${correlationId}] ${request.method} ${request.path} - ${status} - ${detail}${errors ? ` | fields: ${JSON.stringify(errors)}` : ''}`,
             exception instanceof Error ? exception.stack : String(exception)
         );
 

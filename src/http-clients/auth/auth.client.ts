@@ -8,6 +8,8 @@ import {
     RefreshDto,
     AuthResponseDto,
     UserInfoDto,
+    CreateVetRequestDto,
+    VetRequestResponseDto,
 } from '@/modules/auth/dto/auth.dto';
 
 @Injectable()
@@ -49,6 +51,44 @@ export class AuthClient extends HttpClientBase {
     async getMe(token: string): Promise<UserInfoDto> {
         return this.get<UserInfoDto>(
             `${this.baseUrl}/auth/me`,
+            this.extractToken(token)
+        );
+    }
+
+    async createVetRequest(dto: CreateVetRequestDto, token: string): Promise<VetRequestResponseDto> {
+        return this.post<VetRequestResponseDto>(
+            `${this.baseUrl}/auth/vet-requests`,
+            dto,
+            this.extractToken(token)
+        );
+    }
+
+    async getMyVetRequest(token: string): Promise<VetRequestResponseDto> {
+        return this.get<VetRequestResponseDto>(
+            `${this.baseUrl}/auth/vet-requests/my`,
+            this.extractToken(token)
+        );
+    }
+
+    async getAllVetRequests(token: string): Promise<VetRequestResponseDto[]> {
+        return this.get<VetRequestResponseDto[]>(
+            `${this.baseUrl}/auth/vet-requests`,
+            this.extractToken(token)
+        );
+    }
+
+    async approveVetRequest(id: string, token: string): Promise<VetRequestResponseDto> {
+        return this.patch<VetRequestResponseDto>(
+            `${this.baseUrl}/auth/vet-requests/${id}/approve`,
+            {},
+            this.extractToken(token)
+        );
+    }
+
+    async rejectVetRequest(id: string, notes: string | undefined, token: string): Promise<VetRequestResponseDto> {
+        return this.patch<VetRequestResponseDto>(
+            `${this.baseUrl}/auth/vet-requests/${id}/reject`,
+            { notes },
             this.extractToken(token)
         );
     }

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, UseInterceptors, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { PetService } from './pet.service';
-import { CreatePetDto, UpdatePetDto, PetDto } from './dto/pet.dto';
+import { CreatePetDto, UpdatePetDto, PetDto, CreatePetPublicationDto, PetPublicationDto, AdoptablePetEnrichedDto } from './dto/pet.dto';
 import { AuthToken } from '@/common/decorators';
 import { JwtPropagationGuard } from '@/common/guards/jwt-propagation.guard';
 import { LoggingInterceptor } from '@/common/interceptors';
@@ -45,6 +45,24 @@ export class PetController {
     @ApiResponse({ status: 401, description: 'Unauthorized' })
     async getLost(@AuthToken() token: string): Promise<PetDto[]> {
         return this.petService.getLost(token);
+    }
+
+    @Get('/adoptable')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get all pets available for adoption' })
+    @ApiResponse({ status: 200, description: 'List of adoptable pets', type: [PetDto] })
+    async getAdoptable(@AuthToken() token: string): Promise<PetDto[]> {
+        return this.petService.getAdoptable(token);
+    }
+
+    @Get('/adoptable/enriched')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get adoptable pets with caretaker information' })
+    @ApiResponse({ status: 200, description: 'Enriched adoptable pets list', type: [AdoptablePetEnrichedDto] })
+    async getAdoptableEnriched(@AuthToken() token: string): Promise<AdoptablePetEnrichedDto[]> {
+        return this.petService.getAdoptableEnriched(token);
     }
 
     @Get('/:id')
@@ -105,5 +123,49 @@ export class PetController {
         @AuthToken() token: string
     ): Promise<void> {
         return this.petService.delete(id, token);
+    }
+
+    @Post('/publications')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a pet adoption publication (expires in 14 days)' })
+    @ApiResponse({ status: 201, description: 'Publication created', type: PetPublicationDto })
+    async createPublication(
+        @Body() dto: CreatePetPublicationDto,
+        @AuthToken() token: string
+    ): Promise<PetPublicationDto> {
+        return this.petService.createPublication(dto, token);
+    }
+
+    @Get('/publications/active')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get all active (non-expired) publications' })
+    @ApiResponse({ status: 200, description: 'List of active publications', type: [PetPublicationDto] })
+    async getActivePublications(@AuthToken() token: string): Promise<PetPublicationDto[]> {
+        return this.petService.getActivePublications(token);
+    }
+
+    @Get('/publications/me')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get my publications' })
+    @ApiResponse({ status: 200, description: 'My publications', type: [PetPublicationDto] })
+    async getMyPublications(@AuthToken() token: string): Promise<PetPublicationDto[]> {
+        return this.petService.getMyPublications(token);
+    }
+
+    @Delete('/publications/:id')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Delete a publication' })
+    @ApiResponse({ status: 204, description: 'Publication deleted' })
+    async deletePublication(
+        @Param('id') id: string,
+        @AuthToken() token: string
+    ): Promise<void> {
+        return this.petService.deletePublication(id, token);
     }
 }

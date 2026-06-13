@@ -1,7 +1,7 @@
-import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshDto, AuthResponseDto, UserInfoDto } from './dto/auth.dto';
+import { RegisterDto, LoginDto, RefreshDto, AuthResponseDto, UserInfoDto, CreateVetRequestDto, VetRequestResponseDto } from './dto/auth.dto';
 import { AuthToken } from '@/common/decorators';
 import { JwtPropagationGuard } from '@/common/guards/jwt-propagation.guard';
 
@@ -50,5 +50,64 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Unauthorized' })
     async getMe(@AuthToken() token: string): Promise<UserInfoDto> {
         return this.authService.getMe(token);
+    }
+
+    @Post('/vet-requests')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Enviar solicitud de rol veterinaria' })
+    @ApiResponse({ status: 200, description: 'Solicitud creada', type: VetRequestResponseDto })
+    async createVetRequest(
+        @Body() dto: CreateVetRequestDto,
+        @AuthToken() token: string
+    ): Promise<VetRequestResponseDto> {
+        return this.authService.createVetRequest(dto, token);
+    }
+
+    @Get('/vet-requests/my')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Ver estado de mi solicitud de veterinaria' })
+    @ApiResponse({ status: 200, description: 'Estado de la solicitud', type: VetRequestResponseDto })
+    @ApiResponse({ status: 404, description: 'Sin solicitud activa' })
+    async getMyVetRequest(@AuthToken() token: string): Promise<VetRequestResponseDto> {
+        return this.authService.getMyVetRequest(token);
+    }
+
+    @Get('/vet-requests')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Listar todas las solicitudes (solo ADMIN)' })
+    @ApiResponse({ status: 200, description: 'Lista de solicitudes', type: [VetRequestResponseDto] })
+    async getAllVetRequests(@AuthToken() token: string): Promise<VetRequestResponseDto[]> {
+        return this.authService.getAllVetRequests(token);
+    }
+
+    @Patch('/vet-requests/:id/approve')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Aprobar solicitud (solo ADMIN)' })
+    @ApiParam({ name: 'id', type: String })
+    @ApiResponse({ status: 200, description: 'Solicitud aprobada', type: VetRequestResponseDto })
+    async approveVetRequest(
+        @Param('id') id: string,
+        @AuthToken() token: string
+    ): Promise<VetRequestResponseDto> {
+        return this.authService.approveVetRequest(id, token);
+    }
+
+    @Patch('/vet-requests/:id/reject')
+    @UseGuards(JwtPropagationGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Rechazar solicitud (solo ADMIN)' })
+    @ApiParam({ name: 'id', type: String })
+    @ApiResponse({ status: 200, description: 'Solicitud rechazada', type: VetRequestResponseDto })
+    async rejectVetRequest(
+        @Param('id') id: string,
+        @Body() body: { notes?: string },
+        @AuthToken() token: string
+    ): Promise<VetRequestResponseDto> {
+        return this.authService.rejectVetRequest(id, body?.notes, token);
     }
 }

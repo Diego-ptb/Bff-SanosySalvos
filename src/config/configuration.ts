@@ -11,6 +11,7 @@ export const validationSchema = Joi.object({
     AUTH_SERVICE_URL: Joi.string().uri().required(),
     VET_SERVICE_URL: Joi.string().uri().required(),
     PET_SERVICE_URL: Joi.string().uri().required(),
+    PROFILE_SERVICE_URL: Joi.string().uri().required(),
     HTTP_TIMEOUT_MS: Joi.number().default(5000),
     HTTP_MAX_RETRIES: Joi.number().default(3),
     REDIS_URL: Joi.string().uri().default('redis://localhost:6379/0'),
@@ -43,6 +44,7 @@ export interface AppConfig {
     authServiceUrl: string;
     vetServiceUrl: string;
     petServiceUrl: string;
+    profileServiceUrl: string;
     httpTimeoutMs: number;
     httpMaxRetries: number;
     redisUrl: string;
@@ -60,6 +62,7 @@ export function loadConfiguration(): AppConfig {
         authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://auth-service:8080',
         vetServiceUrl: process.env.VET_SERVICE_URL || 'http://vet-service:8081',
         petServiceUrl: process.env.PET_SERVICE_URL || 'http://pet-service:8082',
+        profileServiceUrl: process.env.PROFILE_SERVICE_URL || 'http://profile-service:8083',
         httpTimeoutMs: parseInt(process.env.HTTP_TIMEOUT_MS || '5000', 10),
         httpMaxRetries: parseInt(process.env.HTTP_MAX_RETRIES || '3', 10),
         redisUrl: process.env.REDIS_URL || 'redis://localhost:6379/0',

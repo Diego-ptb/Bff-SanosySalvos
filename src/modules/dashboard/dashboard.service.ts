@@ -4,7 +4,7 @@ import { PetService } from '../pets/pet.service';
 import { DashboardResponseDto, DashboardQueryDto } from './dto/dashboard.dto';
 import { AggregationMeta } from '@/common/types';
 import { VetDto } from '../vets/dto/vet.dto';
-import { PetDto } from '../pets/dto/pet.dto';
+import { PetPublicationDto } from '../pets/dto/pet.dto';
 import { VetFeatureCollection, PetFeatureCollection, VetProperties, PetProperties } from '@/common/types/geojson';
 
 @Injectable()
@@ -38,16 +38,26 @@ export class DashboardService {
             query.lat && query.lng
                 ? this.vetService.getNearby(query.lat, query.lng, query.radius, token)
                 : this.vetService.getAll(token),
-            this.petService.getLost(token),
+            this.petService.getActivePublications(token),
         ]);
+
 
         // Mapear resultados y convertir a GeoJSON
         const vetsData = this.extractData<VetDto[]>(vetsResult);
-        const petsData = this.extractData<PetDto[]>(petsResult);
+        const petsData = this.extractData<PetPublicationDto[]>(petsResult);
+
+        // Filtrar mascotas por radio cuando se provee ubicación
+        const petsFiltered =
+            query.lat && query.lng && petsData
+                ? petsData.filter((p) => {
+                    if (!this.hasValidCoordinates(p.latitude, p.longitude)) return false;
+                    return this.haversineKm(query.lat!, query.lng!, p.latitude, p.longitude) <= (query.radius ?? 10);
+                })
+                : petsData;
 
         // Convertir a FeatureCollections
         const vets = this.toVetFeatureCollection(vetsData);
-        const lostPets = this.toPetFeatureCollection(petsData);
+        const lostPets = this.toPetFeatureCollection(petsFiltered);
 
         // Calcular métricas
         const metrics = {
@@ -118,6 +128,7 @@ export class DashboardService {
                     coordinates: [vet.longitude, vet.latitude] as [number, number],
                 },
                 properties: {
+                    featureType: 'vet' as const,
                     id: vet.id,
                     name: vet.name,
                     address: vet.address,
@@ -133,7 +144,7 @@ export class DashboardService {
      * Convierte PetDto[] a GeoJSON FeatureCollection
      * Filtra elementos sin coordenadas válidas
      */
-    private toPetFeatureCollection(pets: PetDto[] | null): PetFeatureCollection {
+    private toPetFeatureCollection(pets: PetPublicationDto[] | null): PetFeatureCollection {
         if (!pets || pets.length === 0) {
             return { type: 'FeatureCollection', features: [] };
         }
@@ -148,16 +159,30 @@ export class DashboardService {
                     coordinates: [pet.longitude, pet.latitude] as [number, number],
                 },
                 properties: {
+                    featureType: 'pet' as const,
                     id: pet.id,
                     name: pet.name,
                     type: pet.type,
                     imageUrl: pet.imageUrl,
                     ownerId: pet.ownerId,
                     description: pet.description,
+                    contactInfo: pet.contactInfo,
+                    breed: pet.breed,
+                    createdAt: pet.createdAt,
                 } as PetProperties,
             }));
 
         return { type: 'FeatureCollection', features };
+    }
+
+    private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLon = ((lon2 - lon1) * Math.PI) / 180;
+        const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.asin(Math.sqrt(a));
     }
 
     /**
